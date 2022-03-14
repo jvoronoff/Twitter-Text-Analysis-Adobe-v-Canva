@@ -1,0 +1,167 @@
+---
+title: "Twitter Text Analysis-Adobe v. Canva"
+output: html_notebook
+---
+
+# Introduction, Context and Methodology
+
+The goal of this project was to understand the differences in consumer sentiment in two leading competitors (Adobe and Canva), scraping Twitter text data will be the main source for analysis. Scraping twitter yielded approximately 10,000 tweets for the Canva document and 7,000 tweets for the Adobe document. This imbalance is important to note when comparing the results. 
+
+R's text mining library 'tm' will be used to evaluate key text metrics. The first section will evaluate the term frequency (TF) for each word in the document. The term frequency refers to the amount of times a word is used in a document. The second section will evaluate the TF-IDF of words in the two documents. This section will consider the inverse document frequency, and will reflect how important or unique a word is to a specific document over another. This will give a larger score to words which appear frequently in one company's twitter but not the other. 
+
+TF information can be applied to all facets of each business. For example, the marketing team can evaluate the popularity of a hashtag or marketing initiative. The product team can find any pain points or common questions that each product receives, finally the strategy team can determine overall consumer sentiment towards the brand. TF-IDF can be used to understand the major differences in consumer perceptions and twitter interactions between Adobe and Canva. This can yield many strategic insights and help understand each companies role in the industry and competitive advantages.
+
+---
+
+#  Analysis - Section 1 - Term Frequency
+
+Load the libraries required
+```{r}
+library("tm") #text mining library
+library("SnowballC") #For reducing words to their root
+```
+
+## Canva
+
+Read in document
+```{r}
+ myText <- readLines(file.choose())
+```
+
+Create a Corpus document
+```{r}
+myDocument <- Corpus(VectorSource(myText))
+```
+
+Clean the document
+```{r}
+myDocument <- tm_map(myDocument, content_transformer(tolower)) #Convert to lower case
+myDocument <- tm_map(myDocument, removeWords, stopwords("english")) #Remove stopwords
+myDocument <- tm_map(myDocument, removeNumbers) #Remove numbers
+myDocument <- tm_map(myDocument, removePunctuation) #Remove punctuation
+myDocument <- tm_map(myDocument, stemDocument) #Reduce the words to their root
+myDocument <- tm_map(myDocument, stripWhitespace) #Remove unnecessary white space
+```
+
+Calculate term frequence and store in matrix
+```{r}
+termMatrix = as.matrix(TermDocumentMatrix(myDocument))
+```
+
+Sort from high to low
+```{r}
+sortedTermMatrix <- sort(rowSums(termMatrix), decreasing = TRUE) #sort in decreasing order
+```
+
+Save in a dataframe
+```{r}
+d <- data.frame("Term" = names(sortedTermMatrix), "Freq." = sortedTermMatrix, row.names = NULL) #store in data frame
+print(d) #cleaner version of printing. It will still print if you type "d" but the print(d) restricts to the meaningful part
+```
+
+---
+
+## Adobe
+
+Read in document
+```{r}
+ myTextAdobe <- readLines(file.choose())
+```
+
+Create a Corpus document
+```{r}
+myDocumentAdobe <- Corpus(VectorSource(myTextAdobe))
+```
+
+Clean the text
+```{r}
+myDocumentAdobe <- tm_map(myDocumentAdobe, content_transformer(tolower)) #Convert to lower case
+myDocumentAdobe <- tm_map(myDocumentAdobe, removeWords, stopwords("english")) #Remove stopwords
+myDocumentAdobe <- tm_map(myDocumentAdobe, removeNumbers) #Remove numbers
+myDocumentAdobe <- tm_map(myDocumentAdobe, removePunctuation) #Remove punctuation
+myDocumentAdobe <- tm_map(myDocumentAdobe, stemDocument) #Reduce the words to their root
+myDocumentAdobe <- tm_map(myDocumentAdobe, stripWhitespace) #Remove unnecessary white space
+```
+
+Calculate term frequence and store in matrix
+```{r}
+termMatrixAdobe = as.matrix(TermDocumentMatrix(myDocumentAdobe))
+```
+
+Sort from high to low
+```{r}
+sortedTermMatrixAdobe <- sort(rowSums(termMatrixAdobe), decreasing = TRUE) #sort in decreasing order
+```
+
+Save in a data frame and compare
+```{r}
+dAdobe <- data.frame("Term" = names(sortedTermMatrixAdobe), "Freq." = sortedTermMatrixAdobe, row.names = NULL) #store in data frame
+
+#compare
+print(dAdobe) #adobe
+```
+
+---
+
+# Analysis - Section 2 - TF-IDF
+
+Create a corpus (document) of the two data sets
+```{r}
+myDocumentCombined <- Corpus(VectorSource(c(myDocument, myDocumentAdobe)))
+myDocumentCombined
+```
+
+```{r}
+myDocumentCombined <- tm_map(myDocumentCombined, content_transformer(tolower)) #Convert to lower case
+myDocumentCombined <- tm_map(myDocumentCombined, removeWords, stopwords("english")) #Remove stopwords
+myDocumentCombined <- tm_map(myDocumentCombined, removeNumbers) #Remove numbers
+myDocumentCombined <- tm_map(myDocumentCombined, removePunctuation) #Remove punctuation
+myDocumentCombined <- tm_map(myDocumentCombined, stemDocument) #Reduce the words to their root
+myDocumentCombined <- tm_map(myDocumentCombined, stripWhitespace) #Remove unnecessary white space
+```
+
+```{r}
+tdm = TermDocumentMatrix(myDocumentCombined, control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+```
+
+Store in matrix
+```{r}
+termMatrix = as.matrix(tdm)
+tail(termMatrix)
+
+```
+
+Split them
+```{r}
+canvaMatrix <- termMatrix[,1] #all rows, column 1
+adobeMatrix <- termMatrix[,4] #all rows, column 2
+```
+
+Sort them
+```{r}
+sortedcanvaMatrix <- sort((canvaMatrix), decreasing = TRUE)
+sortedadobeMatrix <- sort((adobeMatrix), decreasing = TRUE)
+head(sortedcanvaMatrix)
+head(sortedadobeMatrix)
+```
+
+Sort into data frames
+```{r}
+dCanva <- data.frame("Term" = names(sortedcanvaMatrix),"Freq."=sortedcanvaMatrix,
+row.names = NULL) #Store as Data Frame
+
+dAdobe <- data.frame("Term" = names(sortedadobeMatrix),"Freq."=sortedadobeMatrix,
+row.names = NULL) #Store as Data Frame
+```
+
+## Final TF-IDF Scores for Adobe and Canva
+```{r}
+print (dCanva)
+print (dAdobe)
+```
+
+---
+
+# Recommendations
+
+Adobe's term frequency data frame highlights consumers reference of their major product lines, such as Adobe Express and Adobe for Education. The frequent term "love" highlights that consumers generally enjoy using these products. However, "challenge" is also a frequent word in Adobe's tweets. These tweets should be segmented and evaluated further to understand which parts of Adobe's services are causing challenges for users. Adobe express is the most popular product that they have in their portfolio.The fourth most common word is "tanaavrith". She is a core voice in Adobe's marketing strategy for Adobe for Education, therefore this is a sign that she is reaching a significant audience and is an important face of the brand. Adobe should try to utilize Tanya's reach to deploy more marketing initiatives similar to Cavnva that show quickly users can create with their products. From a strategic lens, Canva generally has stronger consumer sentiment with frequent words such as "love", "thank", and "great". These results also highlight the popularity of Canva's "one-minute-brief" marketing initiative where they encourage people to create exciting and creative ads to show Canva's ease of use. Canva's other marketing initiatives, "canvadesignchallenge' and "remixwithcanva" are also very popular. 
